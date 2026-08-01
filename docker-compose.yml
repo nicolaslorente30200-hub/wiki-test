@@ -1,0 +1,96 @@
+version: "3.8"
+
+services:
+  # ==================== BOOKSTACK ====================
+  bookstack:
+    image: lscr.io/linuxserver/bookstack
+    container_name: bookstack
+    environment:
+      - PUID=1000
+      - PGID=1000
+      - APP_URL=http://localhost:8080
+      - DB_HOST=bookstack_db
+      - DB_PORT=3306
+      - DB_USER=bookstack
+      - DB_PASS=bookstackpass
+      - DB_DATABASE=bookstackdb
+    volumes:
+      - bookstack_data:/config
+    ports:
+      - "8080:80"
+    restart: unless-stopped
+    depends_on:
+      - bookstack_db
+    networks:
+      - bookstack_net
+
+  bookstack_db:
+    image: lscr.io/linuxserver/mariadb
+    container_name: bookstack_db
+    environment:
+      - PUID=1000
+      - PGID=1000
+      - MYSQL_ROOT_PASSWORD=rootpass
+      - TZ=Europe/Paris
+      - MYSQL_DATABASE=bookstackdb
+      - MYSQL_USER=bookstack
+      - MYSQL_PASSWORD=bookstackpass
+    volumes:
+      - bookstack_db_data:/config
+    restart: unless-stopped
+    networks:
+      - bookstack_net
+
+  # ==================== DOCMOST ====================
+  docmost:
+    image: docmost/docmost:latest
+    container_name: docmost
+    depends_on:
+      - docmost_db
+      - docmost_redis
+    environment:
+      APP_URL: 'http://localhost:3000'
+      APP_SECRET: 'votre-cle-super-secrete-tres-longue-12345678901234567890'
+      DATABASE_URL: 'postgresql://docmost:docmostpass@docmost_db:5432/docmost?schema=public'
+      REDIS_URL: 'redis://docmost_redis:6379'
+    ports:
+      - "3000:3000"
+    volumes:
+      - docmost_data:/app/data/storage
+    restart: unless-stopped
+    networks:
+      - docmost_net
+
+  docmost_db:
+    image: postgres:16-alpine
+    container_name: docmost_db
+    environment:
+      POSTGRES_DB: docmost
+      POSTGRES_USER: docmost
+      POSTGRES_PASSWORD: docmostpass
+    volumes:
+      - docmost_db_data:/var/lib/postgresql/data
+    restart: unless-stopped
+    networks:
+      - docmost_net
+
+  docmost_redis:
+    image: redis:7-alpine
+    container_name: docmost_redis
+    volumes:
+      - docmost_redis_data:/data
+    restart: unless-stopped
+    networks:
+      - docmost_net
+
+# ==================== VOLUMES & RÉSEAUX ====================
+volumes:
+  bookstack_data:
+  bookstack_db_data:
+  docmost_data:
+  docmost_db_data:
+  docmost_redis_data:
+
+networks:
+  bookstack_net:
+  docmost_net:
